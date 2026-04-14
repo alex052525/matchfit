@@ -158,7 +158,7 @@ class ParticipationService(
         dto: ManageApplicant,
         userDetails: CustomUserDetails
     ): DecisionApplicant {
-        val post = postRepository.findById(postId).orElseThrow { PostNotFoundException() }
+        val post = postRepository.findByIdForUpdate(postId) ?: throw PostNotFoundException()
         val currentUser = userDetails.user
         if (post.user.id != currentUser.id) {
             throw UnauthorizedUserException()
@@ -174,6 +174,11 @@ class ParticipationService(
                     participation.user.nickname,
                     participation.status
                 )
+            }
+
+            val currentApproved = participationRepository.countByPost_IdAndStatus(postId, ApplicationStatus.APPROVED)
+            if (currentApproved >= post.maxPeople) {
+                throw IllegalStateException("모집 인원이 마감되었습니다.")
             }
 
             participation.status = ApplicationStatus.APPROVED
